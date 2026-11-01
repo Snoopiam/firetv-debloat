@@ -44,6 +44,8 @@ If you'd like an AI assistant (Claude, ChatGPT, etc.) to walk you through it int
 
 In step 4 you save a list of what's **already** disabled on your stick. Before each group you save a "before" list, and after it you generate that group's undo file, which contains only the packages the group actually changed. Undoing therefore puts your stick back exactly as it was, and never switches on something that was off to begin with. Even if you lose the group files, [step 11](guide/11-undo.md) can rebuild a full undo from your step 4 baseline.
 
+The saving and comparing is done by a few small helper commands you paste once ([step 4.0](guide/04-snapshot.md)). They only read from the stick, and they refuse to write anything if a file is missing or the stick can't be read, so a failed read can never turn into a wrong undo file.
+
 No ready-made undo files are included in the repo on purpose: they couldn't know what was already disabled on *your* stick.
 
 ## ⚠️ Disclaimer

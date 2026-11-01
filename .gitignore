@@ -4,3 +4,4 @@ disabled-baseline.txt
 before-*.txt
 after-*.txt
 undo-*.txt
+desired-state.txt

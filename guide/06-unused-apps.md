@@ -27,10 +27,15 @@
 | `com.android.bips` | Printing | — |
 
 ### 6.1 Save the "before" list
-```bash
-adb shell pm list packages -d > before-B.txt
+**Windows (PowerShell):**
+```powershell
+Save-FireSnapshot before-B.txt
 ```
-**Expected:** no output. A file `before-B.txt` appears in your working folder.
+**macOS / Linux:**
+```bash
+fire_save before-B.txt
+```
+**Expected:** `Saved before-B.txt (N disabled)`. If you see `FAILED`, **don't continue**: reconnect and run it again.
 
 ### 6.2 Disable, one at a time — skip what you use
 
@@ -158,15 +163,16 @@ Writes an `adb shell pm enable` line for **each package this group actually chan
 
 **Windows (PowerShell):**
 ```powershell
-$before = @(Get-Content before-B.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-B.txt -Value $undo; Get-Content undo-B.txt
+New-FireUndo before-B.txt undo-B.txt
 ```
 
 **macOS / Linux:**
 ```bash
-adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-B.txt) | sed 's/^package:/adb shell pm enable /' > undo-B.txt; cat undo-B.txt
+fire_undo before-B.txt undo-B.txt
 ```
+If you see `FAILED`, the undo file was **not** created or changed. Fix the cause it names (usually: reconnect, or you're in the wrong folder) and run it again. Don't continue without an undo file.
 
-**Expected:** one `adb shell pm enable ...` line per app you disabled in this group.
+**Expected:** `Saved undo-B.txt (N to re-enable)` followed by one `adb shell pm enable ...` line per app you disabled in this group.
 
 ### ✅ Check
 - `undo-B.txt` lists exactly the apps you disabled

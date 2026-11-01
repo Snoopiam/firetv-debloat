@@ -26,7 +26,7 @@ Ask the person at the start which situation applies if it isn't obvious from you
 1. **Never** run `pm uninstall`, `pm uninstall -k --user 0`, `cmd package uninstall-system-updates`, `pm clear` on an Amazon app, or `pm hide`. Only `pm disable-user --user 0`, `pm enable`, and the read-only/storage commands in the guide. (Uninstall attempts on Fire OS 7.6 fail *and* re-enable disabled apps.)
 2. **Never** touch any package on [guide/08-do-not-touch.md](guide/08-do-not-touch.md), even if asked casually. If the person insists, explain the risk (unusable stick, factory reset) and require an explicit, specific confirmation for that package.
 3. **Default to one package per command**, with a result check after each. Don't chain commands with `;` or `&&`. The guide also has bulk blocks (5.3, 6.3, 7.6). Use one **only if the person explicitly asks** for bulk, only after that group's "before" list is saved, and only with the apps or features they confirmed. Remove the lines for anything they're keeping, and show them the final block before running it. Afterwards, report the result of **every** line, not just "done".
-4. **Undo is based on what actually changed.** Make sure `disabled-baseline.txt` exists (step 4.4) before any change. Before each group, save its "before" list. After the group, generate its undo file and **show the person its contents**: it must list exactly the packages that reported `disabled-user`. Never hand out a fixed list of `pm enable` commands for a whole group; it could switch on packages that were disabled before the session.
+4. **Undo is based on what actually changed.** Load the helper commands (step 4.0) first, in the person's shell, and use them for every snapshot, undo file and comparison; don't improvise one-liners. If a helper prints `FAILED`, **stop**: fix the cause it names and re-run it. Never continue to a disable command, or run an undo file, after a `FAILED`. Make sure `disabled-baseline.txt` was reported `Saved` (step 4.4) before any change. Before each group, save its "before" list. After the group, generate its undo file and **show the person its contents**: it must list exactly the packages that reported `disabled-user`. Never hand out a fixed list of `pm enable` commands for a whole group; it could switch on packages that were disabled before the session.
 5. **Ask before every group**, and inside Group B and Group C, ask **per app / per feature**. Silence or ambiguity means "skip", not "yes".
 6. Don't claim something worked until you've seen the output that proves it (`new state: disabled-user`, a `pm list packages -d` line, etc.).
 7. Don't touch anything the person didn't agree to — not even "obviously safe" extras.
@@ -43,7 +43,7 @@ Follow this order. At each ⏸ wait for the person.
 - [03](guide/03-connect.md): `adb connect`, remind them to approve the TV prompt, then `adb devices`. Don't continue until you see `device`. ⏸
 
 ### 2. Snapshot
-- [04](guide/04-snapshot.md): record the firmware, save `before-enabled.txt` and **`disabled-baseline.txt`**, and run the 4.3 check.
+- [04](guide/04-snapshot.md): load the helpers (4.0) and confirm the load check passes. If the person opens a new terminal later, load them again. Then record the firmware, save `before-enabled.txt` and **`disabled-baseline.txt`**, and run the 4.3 check.
 - If the baseline lists anything besides `com.android.nfc`, tell the person: those stay untouched, and undo will leave them disabled.
 - **Tell the person what you found:** firmware version, how many of the guide's 40 packages exist on their stick, and any that are missing (those will be skipped). ⏸
 
@@ -67,8 +67,10 @@ Follow this order. At each ⏸ wait for the person.
 - If they chose Alexa: ask them to press the mic button and confirm nothing happens. Ask them to open one streaming app to confirm it works. ⏸
 
 ### 6. Reboot and verify
-- [09](guide/09-reboot-and-verify.md): save `before-reboot.txt` (9.1), then ask before rebooting. ⏸ After `adb reboot`, wait about 90 seconds (tell the person you're waiting), reconnect, and check `uptime` to prove the reboot happened.
-- Run the name comparison (9.4). **Compare names, never just counts.** If anything was switched back on, list exactly which packages and offer to re-disable those only. If anything is *newly* disabled, don't touch it; report it. ⏸
+- [09](guide/09-reboot-and-verify.md): save `desired-state.txt` (9.1) **once**, now that the stick is the way they want it. Then ask before rebooting. ⏸ After `adb reboot`, wait about 90 seconds (tell the person you're waiting), reconnect, and check `uptime` to prove the reboot happened.
+- Run the comparison against `desired-state.txt` (9.4). **Compare names, never just counts.** If anything was switched back on, list exactly which packages and offer to re-disable those only, then compare again until `MATCH`. If anything is *newly* disabled, don't touch it; report it. ⏸
+- **Never re-save `desired-state.txt` after a reboot** to "reset" the check. It's only re-saved after a deliberate change (an undo, or a new disable) that the person has verified (9.6).
+- If the person comes back after an unexpected reboot (power cut, update), start at 9.3: uptime, compare with the existing `desired-state.txt`, restore.
 - Ask them to check the TV: home screen loads, apps open.
 
 ### 7. Optional — storage
@@ -78,7 +80,7 @@ Follow this order. At each ⏸ wait for the person.
 Give a short summary:
 - What's disabled now (by name, per group), what was protected or missing
 - Where their undo files and `disabled-baseline.txt` are, the one-line command to undo a group, and the full-restore option ([11](guide/11-undo.md))
-- To check again after reboots or updates, repeat step 9's name comparison
+- To check again after reboots or updates: load the helpers, then step 9.3–9.5 against their saved `desired-state.txt` (don't re-save it)
 - They can turn ADB debugging off now if they like
 
 ## Reading results

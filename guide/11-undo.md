@@ -25,16 +25,16 @@ sh undo-B.txt
 **Expected:** one `new state: enabled` line per package in the file.
 
 ### Undo everything: back to your starting point
-This uses `disabled-baseline.txt` from [step 4.4](04-snapshot.md). It works even if you've lost your group undo files. It builds `undo-all.txt` containing every package that's disabled now but **wasn't** when you started.
+This uses `disabled-baseline.txt` from [step 4.4](04-snapshot.md), and works even if you've lost your group undo files. It builds `undo-all.txt` with every package that's disabled now but **wasn't** when you started. The helper commands from [step 4.0](04-snapshot.md) must be loaded. If the baseline is missing or unreadable, or the stick isn't connected, the helper prints `FAILED` and creates nothing, so it can't produce a wrong list.
 
 **Windows (PowerShell):**
 ```powershell
-$base = @(Get-Content disabled-baseline.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($base -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-all.txt -Value $undo; Get-Content undo-all.txt
+New-FireUndo disabled-baseline.txt undo-all.txt
 ```
 
 **macOS / Linux:**
 ```bash
-adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < disabled-baseline.txt) | sed 's/^package:/adb shell pm enable /' > undo-all.txt; cat undo-all.txt
+fire_undo disabled-baseline.txt undo-all.txt
 ```
 
 **Read the list first.** If you disabled anything yourself outside this guide since step 4, it'll be in there too. Delete those lines if you want to keep them disabled. Then run it like a group file:
@@ -49,10 +49,19 @@ sh undo-all.txt
 ```
 
 ### Check
-```bash
-adb shell pm list packages -d
+After a full undo, the stick should match your starting point exactly:
+
+**Windows (PowerShell):**
+```powershell
+Compare-FireSnapshot disabled-baseline.txt
 ```
-Compare it with `disabled-baseline.txt`. After a full undo, they should match.
+**macOS / Linux:**
+```bash
+fire_compare disabled-baseline.txt
+```
+**Expected:** `MATCH: the stick is exactly as saved.`
+
+> **Note:** After any undo, your `desired-state.txt` from step 9 no longer matches what you want, so the next reboot check would flag the packages you just re-enabled. Once you're happy with the stick, save a new desired state ([step 9.6](09-reboot-and-verify.md)).
 
 ### No baseline and no undo files?
 Every package this guide can disable is listed in steps 5–7, and `pm enable` works on any of them. But without your baseline you can't tell which of them were already disabled before you started, so only re-enable the ones you know you changed.

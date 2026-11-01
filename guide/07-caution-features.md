@@ -22,10 +22,15 @@ These four were disabled on the tested device (Fire TV Stick 4K, Fire OS 7.6.9.7
 | Metrics API | `com.amazon.client.metrics.api` | Some apps reportedly crash without it |
 
 ### 7.1 Save the "before" list
-```bash
-adb shell pm list packages -d > before-C.txt
+**Windows (PowerShell):**
+```powershell
+Save-FireSnapshot before-C.txt
 ```
-**Expected:** no output. A file `before-C.txt` appears in your working folder.
+**macOS / Linux:**
+```bash
+fire_save before-C.txt
+```
+**Expected:** `Saved before-C.txt (N disabled)`. If you see `FAILED`, **don't continue**: reconnect and run it again.
 
 ### 7.2 Alexa voice (6 commands — do all six or none)
 **Expected** for each: `Package <name> new state: disabled-user`
@@ -94,15 +99,16 @@ Writes an `adb shell pm enable` line for **each package this group actually chan
 
 **Windows (PowerShell):**
 ```powershell
-$before = @(Get-Content before-C.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-C.txt -Value $undo; Get-Content undo-C.txt
+New-FireUndo before-C.txt undo-C.txt
 ```
 
 **macOS / Linux:**
 ```bash
-adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-C.txt) | sed 's/^package:/adb shell pm enable /' > undo-C.txt; cat undo-C.txt
+fire_undo before-C.txt undo-C.txt
 ```
+If you see `FAILED`, the undo file was **not** created or changed. Fix the cause it names (usually: reconnect, or you're in the wrong folder) and run it again. Don't continue without an undo file.
 
-**Expected:** one `adb shell pm enable ...` line per package you disabled in this group.
+**Expected:** `Saved undo-C.txt (N to re-enable)` followed by one `adb shell pm enable ...` line per package you disabled in this group.
 
 ### ✅ Check
 - Press the mic button on the remote — nothing should happen (if you disabled Alexa)

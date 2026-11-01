@@ -17,10 +17,15 @@ These services serve sponsored content, track what you watch, and upload logs an
 
 ### 5.1 Save the "before" list
 Records what's disabled right now, so the undo file in 5.4 contains **only** what this group actually changes.
-```bash
-adb shell pm list packages -d > before-A.txt
+**Windows (PowerShell):**
+```powershell
+Save-FireSnapshot before-A.txt
 ```
-**Expected:** no output. A file `before-A.txt` appears in your working folder.
+**macOS / Linux:**
+```bash
+fire_save before-A.txt
+```
+**Expected:** `Saved before-A.txt (N disabled)`. If you see `FAILED`, **don't continue**: reconnect and run it again.
 
 ### 5.2 Disable, one at a time
 
@@ -78,15 +83,16 @@ This compares what's disabled now with your "before" list and writes an `adb she
 
 **Windows (PowerShell):**
 ```powershell
-$before = @(Get-Content before-A.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-A.txt -Value $undo; Get-Content undo-A.txt
+New-FireUndo before-A.txt undo-A.txt
 ```
 
 **macOS / Linux:**
 ```bash
-adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-A.txt) | sed 's/^package:/adb shell pm enable /' > undo-A.txt; cat undo-A.txt
+fire_undo before-A.txt undo-A.txt
 ```
+If you see `FAILED`, the undo file was **not** created or changed. Fix the cause it names (usually: reconnect, or you're in the wrong folder) and run it again. Don't continue without an undo file.
 
-**Expected:** one `adb shell pm enable ...` line for every package that said `disabled-user` above (8 if all worked). A package that was already disabled before you started, or that Fire OS refused, won't appear. That's correct, because there's nothing to undo for it.
+**Expected:** `Saved undo-A.txt (N to re-enable)` followed by one `adb shell pm enable ...` line for every package that said `disabled-user` above (8 if all worked). A package that was already disabled before you started, or that Fire OS refused, won't appear. That's correct, because there's nothing to undo for it.
 
 ### Protected — Fire OS refuses these
 In testing, Fire OS 7.6 rejected these five with `java.lang.SecurityException: Cannot disable a protected package`. They can't be disabled without root, so they're not in the list above. Don't try workarounds (see [step 12](12-troubleshooting.md)).
