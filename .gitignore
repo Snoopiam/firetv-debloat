@@ -5,3 +5,4 @@ before-*.txt
 after-*.txt
 undo-*.txt
 desired-state.txt
+*.txt.tmp

@@ -7,9 +7,11 @@ The guide keeps track of what you change by saving lists of disabled packages an
 
 | Helper (PowerShell / macOS-Linux) | What it does |
 |---|---|
-| `Save-FireSnapshot` / `fire_save` | Saves the stick's current list of disabled packages to a file. Refuses (and saves nothing) if adb fails or returns anything that isn't a package line. |
-| `New-FireUndo` / `fire_undo` | Compares a saved snapshot with the stick now and writes an undo file containing **only** the packages that changed. Refuses (and leaves any existing undo file alone) if the snapshot is missing, isn't one saved by this guide, or adb fails. |
+| `Save-FireSnapshot` / `fire_save` | Saves the stick's current list of disabled packages to a file. Refuses if adb fails, returns anything that isn't a package line, or the file can't be written. |
+| `New-FireUndo` / `fire_undo` | Compares a saved snapshot with the stick now and writes an undo file containing **only** the packages that changed. Refuses if the snapshot is missing or isn't one saved by this guide, adb fails, or the undo file can't be written. |
 | `Compare-FireSnapshot` / `fire_compare` | Shows packages that differ from a saved snapshot, by name. |
+
+When a helper refuses, it prints `FAILED` and leaves your existing files exactly as they were: it writes to a temporary file first and only replaces the real one once that write has fully succeeded (so a full disk or a wrong folder can't leave you with a half-written or missing file).
 
 Every saved snapshot starts with the line `# fire-tv snapshot`. That line is how the helpers know a file is a real snapshot, including a snapshot of an empty list.
 
@@ -24,23 +26,39 @@ function Get-FireDisabled {
     return ,$pk
 }
 function Read-FireSnapshot($File) {
-    if (-not (Test-Path -LiteralPath $File)) { Write-Host "FAILED: $File not found" -ForegroundColor Red; return $null }
-    $lines = @(Get-Content -LiteralPath $File | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { Write-Host "FAILED: $File not found" -ForegroundColor Red; return $null }
+    try { $raw = @(Get-Content -LiteralPath $File -ErrorAction Stop) }
+    catch { Write-Host "FAILED: could not read ${File}: $($_.Exception.Message)" -ForegroundColor Red; return $null }
+    $lines = @($raw | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
     if ($lines.Count -eq 0 -or $lines[0] -ne '# fire-tv snapshot') { Write-Host "FAILED: $File is not a snapshot saved by this guide" -ForegroundColor Red; return $null }
     $pk = @($lines | Select-Object -Skip 1)
     if (@($pk | Where-Object { $_ -notlike 'package:*' }).Count) { Write-Host "FAILED: $File contains lines that aren't packages" -ForegroundColor Red; return $null }
     return ,$pk
 }
+function Write-FireFile($File, $Lines) {
+    # Write a temporary file first; replace $File only if that fully succeeded.
+    if (Test-Path -LiteralPath $File -PathType Container) { Write-Host "FAILED: $File is a folder" -ForegroundColor Red; return $false }
+    $tmp = "$File.tmp"
+    try {
+        Set-Content -LiteralPath $tmp -Value $Lines -ErrorAction Stop
+        Move-Item -LiteralPath $tmp -Destination $File -Force -ErrorAction Stop
+        return $true
+    } catch {
+        Write-Host "FAILED: could not write ${File}: $($_.Exception.Message)" -ForegroundColor Red
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        return $false
+    }
+}
 function Save-FireSnapshot($File) {
     $now = Get-FireDisabled; if ($null -eq $now) { Write-Host "Nothing saved." -ForegroundColor Red; return }
-    Set-Content -LiteralPath $File -Value (@('# fire-tv snapshot') + $now)
+    if (-not (Write-FireFile $File (@('# fire-tv snapshot') + $now))) { Write-Host "Nothing saved. Any existing $File is unchanged." -ForegroundColor Red; return }
     Write-Host "Saved $File ($($now.Count) disabled)" -ForegroundColor Green
 }
 function New-FireUndo($Before, $UndoFile) {
     $was = Read-FireSnapshot $Before; if ($null -eq $was) { Write-Host "Undo file NOT created or changed." -ForegroundColor Red; return }
     $now = Get-FireDisabled; if ($null -eq $now) { Write-Host "Undo file NOT created or changed." -ForegroundColor Red; return }
     $undo = @($now | Where-Object { $was -notcontains $_ } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') })
-    Set-Content -LiteralPath $UndoFile -Value $undo
+    if (-not (Write-FireFile $UndoFile $undo)) { Write-Host "Undo file NOT created or changed." -ForegroundColor Red; return }
     Write-Host "Saved $UndoFile ($($undo.Count) to re-enable):" -ForegroundColor Green; $undo
 }
 function Compare-FireSnapshot($File) {
@@ -64,26 +82,34 @@ fire_get() {
   if [ -n "$out" ]; then printf '%s\n' "$out"; fi
 }
 fire_read() {
-  local body
+  local all body
   if [ ! -f "$1" ]; then echo "FAILED: $1 not found" >&2; return 1; fi
-  if [ "$(tr -d '\r' < "$1" | sed '/^[[:space:]]*$/d' | head -1)" != "# fire-tv snapshot" ]; then echo "FAILED: $1 is not a snapshot saved by this guide" >&2; return 1; fi
-  body=$(tr -d '\r' < "$1" | sed 's/[[:space:]]*$//; /^$/d' | tail -n +2)
+  if ! all=$(tr -d '\r' < "$1"); then echo "FAILED: could not read $1" >&2; return 1; fi
+  all=$(printf '%s\n' "$all" | sed 's/[[:space:]]*$//; /^$/d')
+  if [ "$(printf '%s\n' "$all" | head -1)" != "# fire-tv snapshot" ]; then echo "FAILED: $1 is not a snapshot saved by this guide" >&2; return 1; fi
+  body=$(printf '%s\n' "$all" | tail -n +2)
   if [ -n "$body" ] && printf '%s\n' "$body" | grep -qv '^package:'; then echo "FAILED: $1 contains lines that aren't packages" >&2; return 1; fi
   if [ -n "$body" ]; then printf '%s\n' "$body"; fi
+}
+fire_write() {
+  # Write a temporary file first; replace $1 only if that fully succeeded.
+  if [ -d "$1" ]; then echo "FAILED: $1 is a folder" >&2; return 1; fi
+  if { if [ -n "$2" ]; then printf '%s\n' "$2"; fi; } > "$1.tmp" && mv -f "$1.tmp" "$1"; then return 0; fi
+  rm -f "$1.tmp" 2>/dev/null; echo "FAILED: could not write $1" >&2; return 1
 }
 fire_save() {
   local now
   now=$(fire_get) || { echo "Nothing saved." >&2; return 1; }
-  { echo '# fire-tv snapshot'; if [ -n "$now" ]; then printf '%s\n' "$now"; fi; } > "$1"
-  echo "Saved $1 ($(grep -c '^package:' "$1") disabled)"
+  fire_write "$1" "$(echo '# fire-tv snapshot'; if [ -n "$now" ]; then printf '%s\n' "$now"; fi)" || { echo "Nothing saved. Any existing $1 is unchanged." >&2; return 1; }
+  echo "Saved $1 ($(printf '%s\n' "$now" | grep -c '^package:') disabled)"
 }
 fire_undo() {
   local was now undo
   was=$(fire_read "$1") || { echo "Undo file NOT created or changed." >&2; return 1; }
   now=$(fire_get) || { echo "Undo file NOT created or changed." >&2; return 1; }
   undo=$(printf '%s\n' "$now" | grep -vxF -f <(printf '%s\n' "$was") | sed '/^$/d; s/^package:/adb shell pm enable /')
-  if [ -n "$undo" ]; then printf '%s\n' "$undo" > "$2"; else : > "$2"; fi
-  echo "Saved $2 ($(grep -c . "$2") to re-enable):"; cat "$2"
+  fire_write "$2" "$undo" || { echo "Undo file NOT created or changed." >&2; return 1; }
+  echo "Saved $2 ($(printf '%s\n' "$undo" | grep -c .) to re-enable):"; if [ -n "$undo" ]; then printf '%s\n' "$undo"; fi
 }
 fire_compare() {
   local want now on new

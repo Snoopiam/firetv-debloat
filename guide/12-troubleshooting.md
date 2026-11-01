@@ -34,8 +34,9 @@ On Fire OS the standard Android settings request goes to Amazon's settings app. 
 - *"not recognized" / "command not found"*: the helpers aren't loaded in this terminal. `cd` into your working folder and paste the block from [step 4.0](04-snapshot.md) again.
 - *`FAILED: adb could not read the package list`*: the stick isn't connected. Reconnect ([step 3](03-connect.md)) and run the same command again.
 - *`FAILED: <file> not found` / `is not a snapshot saved by this guide`*: you're in the wrong folder, or the file was edited or replaced. `cd` to your working folder. Don't recreate a baseline or desired-state file from the stick's current state to "fix" this; that would record your changes as the starting point.
+- *`FAILED: could not write <file>`*: the folder doesn't exist, you don't have permission to write there, or the disk is full. `cd` to your working folder (or free some space) and run the same command again.
 
-When a helper fails, it writes nothing, so your existing files are untouched.
+When a helper fails, your existing files are left exactly as they were.
 
 ### Still stuck?
 Run these and include the output when asking for help:
