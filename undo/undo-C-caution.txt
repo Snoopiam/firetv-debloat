@@ -1,0 +1,11 @@
+adb shell pm enable com.amazon.vizzini
+adb shell pm enable com.amazon.vizzini.ftvcds
+adb shell pm enable com.amazon.alexamediaplayer.runtime.ftv
+adb shell pm enable com.amazon.alexa.externalmediaplayer.fireos
+adb shell pm enable com.amazon.tv.alexaalerts
+adb shell pm enable com.amazon.tv.alexanotifications
+adb shell pm enable com.amazon.tv.livetv
+adb shell pm enable com.amazon.ftv.screensaver
+adb shell pm enable com.svox.pico
+adb shell pm enable com.ivona.tts.oem
+adb shell pm enable com.ivona.orchestrator

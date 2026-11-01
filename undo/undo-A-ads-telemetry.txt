@@ -1,0 +1,8 @@
+adb shell pm enable com.amazon.kso.blackbird
+adb shell pm enable com.amazon.hybridadidservice
+adb shell pm enable com.amazon.tv.acr
+adb shell pm enable com.amazon.sneakpeek
+adb shell pm enable com.amazon.dp.logger
+adb shell pm enable com.amazon.tv.fw.metrics
+adb shell pm enable com.amazon.wirelessmetrics.service
+adb shell pm enable com.amazon.perfcollection
