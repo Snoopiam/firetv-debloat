@@ -23,14 +23,21 @@ adb shell "pm list packages | grep -E 'kso.blackbird|hybridadidservice|tv.acr|sn
 
 > **Note:** If a package from the guide isn't on your stick, its command later simply prints an *"Unknown package"* error. That's harmless — skip it and carry on.
 
-### 4.4 Count what's disabled right now
+### 4.4 Save the list of packages that are already disabled (your baseline)
+This is the most important file in the guide. It records what was **already** disabled before you changed anything, so undo can put your stick back exactly as it was and not switch on something that was off to begin with.
+```bash
+adb shell pm list packages -d > disabled-baseline.txt
+```
+Look at it:
 ```bash
 adb shell pm list packages -d
 ```
-**Expected (stock stick):** usually just `package:com.android.nfc`. Amazon disables NFC at the factory because the stick has no NFC chip. Remember this — it explains the "+1" in later counts.
+**On the tested stick:** just `package:com.android.nfc`. Amazon disables NFC at the factory because the stick has no NFC chip. Yours may list more, for example if someone has debloated it before. That's fine: anything in this file stays exactly as it is.
+
+> **Important:** Don't delete or overwrite `disabled-baseline.txt`. [Step 11](11-undo.md) uses it to restore everything, even if you lose the other files.
 
 ### ✅ Check
-- `before-enabled.txt` exists in your working folder
+- `before-enabled.txt` and `disabled-baseline.txt` exist in your working folder
 - You know your firmware version and roughly which packages exist
 
 ---

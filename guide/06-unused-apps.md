@@ -1,6 +1,6 @@
 # 6. Group B — Unused Amazon apps
 
-**Risk: safe** — as long as you don't use the app. Read the table and **skip any app you actually use**. Nothing else on the stick depends on these.
+**Tested:** all 21 were disabled on the tested device (Fire TV Stick 4K, Fire OS 7.6.9.7), and nothing else on it stopped working. That doesn't guarantee another app on *your* stick doesn't use one of them, so **skip any app you use**, and check the apps you rely on afterwards.
 
 | Package | What it is | Skip if you use… |
 |---|---|---|
@@ -26,62 +26,11 @@
 | `com.android.printspooler` | Printing | — |
 | `com.android.bips` | Printing | — |
 
-### 6.1 Save the undo file first
-The undo file lists all 21. Re-enabling an app you skipped is harmless, so you don't need to edit it.
-
-**Windows (PowerShell):**
-```powershell
-@'
-adb shell pm enable com.amazon.imdb.tv.android.app
-adb shell pm enable com.amazon.minitv.android.app
-adb shell pm enable com.amazon.shoptv.client
-adb shell pm enable com.amazon.shoptv.firetv.client
-adb shell pm enable com.amazon.bueller.photos
-adb shell pm enable com.amazon.bueller.music
-adb shell pm enable com.amazon.gamehub
-adb shell pm enable com.amazon.cloud9
-adb shell pm enable com.amazon.tv.website_launcher
-adb shell pm enable com.amazon.tahoe
-adb shell pm enable com.amazon.storm.lightning.tutorial
-adb shell pm enable com.amazon.tmm.tutorial
-adb shell pm enable com.amazon.tv.releasenotes
-adb shell pm enable com.amazon.stillwatching.activity
-adb shell pm enable com.amazon.tv.support
-adb shell pm enable com.amazon.whasettings
-adb shell pm enable com.amazon.whad
-adb shell pm enable com.amazon.wha.mediabrowserservice
-adb shell pm enable com.amazon.spotify.mediabrowserservice
-adb shell pm enable com.android.printspooler
-adb shell pm enable com.android.bips
-'@ | Set-Content undo-B-unused-apps.txt
-```
-
-**macOS / Linux:**
+### 6.1 Save the "before" list
 ```bash
-cat > undo-B-unused-apps.txt <<'EOF'
-adb shell pm enable com.amazon.imdb.tv.android.app
-adb shell pm enable com.amazon.minitv.android.app
-adb shell pm enable com.amazon.shoptv.client
-adb shell pm enable com.amazon.shoptv.firetv.client
-adb shell pm enable com.amazon.bueller.photos
-adb shell pm enable com.amazon.bueller.music
-adb shell pm enable com.amazon.gamehub
-adb shell pm enable com.amazon.cloud9
-adb shell pm enable com.amazon.tv.website_launcher
-adb shell pm enable com.amazon.tahoe
-adb shell pm enable com.amazon.storm.lightning.tutorial
-adb shell pm enable com.amazon.tmm.tutorial
-adb shell pm enable com.amazon.tv.releasenotes
-adb shell pm enable com.amazon.stillwatching.activity
-adb shell pm enable com.amazon.tv.support
-adb shell pm enable com.amazon.whasettings
-adb shell pm enable com.amazon.whad
-adb shell pm enable com.amazon.wha.mediabrowserservice
-adb shell pm enable com.amazon.spotify.mediabrowserservice
-adb shell pm enable com.android.printspooler
-adb shell pm enable com.android.bips
-EOF
+adb shell pm list packages -d > before-B.txt
 ```
+**Expected:** no output. A file `before-B.txt` appears in your working folder.
 
 ### 6.2 Disable, one at a time — skip what you use
 
@@ -173,7 +122,7 @@ adb shell pm disable-user --user 0 com.android.bips
 ```
 
 ### 6.3 Or: disable the whole group in one go (optional)
-Use this **instead of** 6.2. Save the undo file (6.1) first.
+Use this **instead of** 6.2. Save the "before" list (6.1) first.
 
 > **Important:** This block disables **all 21**. Before pasting, **delete the line of any app you use** (the comments at the end of each line tell you which app it is). Paste the edited block in one go; each line runs as its own command.
 
@@ -204,11 +153,24 @@ adb shell pm disable-user --user 0 com.android.bips                      # Print
 
 > **Note:** `com.amazon.tv.csapp` (customer support) is left out on purpose — Fire OS refused it as a protected package in testing.
 
-### ✅ Check
-```bash
-adb shell pm list packages -d
+### 6.4 Create your undo file
+Writes an `adb shell pm enable` line for **each package this group actually changed**. Apps you skipped, and anything that was already disabled before you started, stay out of it.
+
+**Windows (PowerShell):**
+```powershell
+$before = @(Get-Content before-B.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-B.txt -Value $undo; Get-Content undo-B.txt
 ```
-**Expected:** Group A's 8 + the Group B apps you disabled + `com.android.nfc`. If you did all of Group B: **30 lines**.
+
+**macOS / Linux:**
+```bash
+adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-B.txt) | sed 's/^package:/adb shell pm enable /' > undo-B.txt; cat undo-B.txt
+```
+
+**Expected:** one `adb shell pm enable ...` line per app you disabled in this group.
+
+### ✅ Check
+- `undo-B.txt` lists exactly the apps you disabled
+- Open the apps you use. They should start and play normally.
 
 > **Important:** In testing, this group was **reset to enabled after a reboot** at least once, while Group A stayed off. Do [step 9](09-reboot-and-verify.md) to check yours.
 

@@ -30,7 +30,7 @@ mkdir -p ~/firetv-debloat && cd ~/firetv-debloat
 **Golden rules**
 1. Only use `pm disable-user`. Never `pm uninstall` on Amazon apps — see [step 12](12-troubleshooting.md) for why it backfired in testing.
 2. Never touch the packages on the [⛔ do-not-touch list](08-do-not-touch.md).
-3. Save each group's undo file **before** running that group.
+3. Save the **"before" list** before each group, and create that group's **undo file** right after it. Never delete `disabled-baseline.txt` (step 4).
 
 ---
 ➡️ Next: [1. Enable ADB debugging](01-enable-adb.md)

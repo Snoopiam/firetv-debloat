@@ -1,6 +1,8 @@
 # 5. Group A — Ads, tracking & telemetry
 
-**Risk: safe.** These services serve sponsored content, track what you watch, and upload logs and metrics to Amazon. Nothing you use depends on them.
+**Tested:** no problems were observed after disabling these on the tested device (Fire TV Stick 4K, Fire OS 7.6.9.7). Other models and firmware may behave differently, so open the apps you use afterwards and check they still work.
+
+These services serve sponsored content, track what you watch, and upload logs and metrics to Amazon.
 
 | Package | What it is |
 |---|---|
@@ -13,35 +15,12 @@
 | `com.amazon.wirelessmetrics.service` | Wi-Fi metrics |
 | `com.amazon.perfcollection` | Performance data collection |
 
-### 5.1 Save the undo file first
-
-**Windows (PowerShell):**
-```powershell
-@'
-adb shell pm enable com.amazon.kso.blackbird
-adb shell pm enable com.amazon.hybridadidservice
-adb shell pm enable com.amazon.tv.acr
-adb shell pm enable com.amazon.sneakpeek
-adb shell pm enable com.amazon.dp.logger
-adb shell pm enable com.amazon.tv.fw.metrics
-adb shell pm enable com.amazon.wirelessmetrics.service
-adb shell pm enable com.amazon.perfcollection
-'@ | Set-Content undo-A-ads-telemetry.txt
-```
-
-**macOS / Linux:**
+### 5.1 Save the "before" list
+Records what's disabled right now, so the undo file in 5.4 contains **only** what this group actually changes.
 ```bash
-cat > undo-A-ads-telemetry.txt <<'EOF'
-adb shell pm enable com.amazon.kso.blackbird
-adb shell pm enable com.amazon.hybridadidservice
-adb shell pm enable com.amazon.tv.acr
-adb shell pm enable com.amazon.sneakpeek
-adb shell pm enable com.amazon.dp.logger
-adb shell pm enable com.amazon.tv.fw.metrics
-adb shell pm enable com.amazon.wirelessmetrics.service
-adb shell pm enable com.amazon.perfcollection
-EOF
+adb shell pm list packages -d > before-A.txt
 ```
+**Expected:** no output. A file `before-A.txt` appears in your working folder.
 
 ### 5.2 Disable, one at a time
 
@@ -81,7 +60,7 @@ adb shell pm disable-user --user 0 com.amazon.perfcollection
 ```
 
 ### 5.3 Or: disable all 8 in one go (optional)
-Use this **instead of** 5.2 if you'd rather not paste eight times. Save the undo file (5.1) first. Paste the whole block at once; each line runs as its own command (Windows PowerShell, macOS and Linux).
+Use this **instead of** 5.2 if you'd rather not paste eight times. Save the "before" list (5.1) first. Paste the whole block at once; each line runs as its own command (Windows PowerShell, macOS and Linux).
 ```bash
 adb shell pm disable-user --user 0 com.amazon.kso.blackbird
 adb shell pm disable-user --user 0 com.amazon.hybridadidservice
@@ -93,6 +72,21 @@ adb shell pm disable-user --user 0 com.amazon.wirelessmetrics.service
 adb shell pm disable-user --user 0 com.amazon.perfcollection
 ```
 **Expected:** 8 lines of `Package <name> new state: disabled-user`. Scroll up and check every line. If one shows an error, look it up in [step 12](12-troubleshooting.md).
+
+### 5.4 Create your undo file
+This compares what's disabled now with your "before" list and writes an `adb shell pm enable` line for **each package this group changed**, and nothing else.
+
+**Windows (PowerShell):**
+```powershell
+$before = @(Get-Content before-A.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-A.txt -Value $undo; Get-Content undo-A.txt
+```
+
+**macOS / Linux:**
+```bash
+adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-A.txt) | sed 's/^package:/adb shell pm enable /' > undo-A.txt; cat undo-A.txt
+```
+
+**Expected:** one `adb shell pm enable ...` line for every package that said `disabled-user` above (8 if all worked). A package that was already disabled before you started, or that Fire OS refused, won't appear. That's correct, because there's nothing to undo for it.
 
 ### Protected — Fire OS refuses these
 In testing, Fire OS 7.6 rejected these five with `java.lang.SecurityException: Cannot disable a protected package`. They can't be disabled without root, so they're not in the list above. Don't try workarounds (see [step 12](12-troubleshooting.md)).
@@ -108,10 +102,8 @@ In testing, Fire OS 7.6 rejected these five with `java.lang.SecurityException: C
 > **Tip:** To silence those five, block Amazon's metrics/ad domains at your router or with a DNS filter (Pi-hole, NextDNS). Be careful: the home screen's ad tiles come from the same Amazon servers as the rest of the home screen, so aggressive blocking can break it.
 
 ### ✅ Check
-```bash
-adb shell pm list packages -d
-```
-**Expected:** the 8 packages above plus `com.android.nfc` — **9 lines** in total.
+- `undo-A.txt` lists every package you just disabled
+- Open YouTube, Netflix or whatever you use. They should start and play normally.
 
 > **Note:** The big sponsored tiles on Amazon's home screen (e.g. "Watch on BBC iPlayer", "Tubi") **won't disappear**. They're delivered by Amazon's servers and drawn by the home screen itself, which can't be disabled. The privacy toggles in Settings → Preferences → Privacy only stop personalisation; they don't remove them either.
 

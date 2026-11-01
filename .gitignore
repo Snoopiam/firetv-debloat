@@ -1,3 +1,6 @@
-# Personal working files from the guide
+# Personal working files the guide creates
 before-enabled.txt
-/undo-*.txt
+disabled-baseline.txt
+before-*.txt
+after-*.txt
+undo-*.txt

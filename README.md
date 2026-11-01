@@ -11,10 +11,10 @@ A hands-on, copy-paste guide to switching off Amazon's ads, tracking and unused 
 |---|---|
 | Disables Amazon ad, tracking and telemetry services | Remove the sponsored tiles on Amazon's home screen (those come from Amazon's servers) |
 | Disables Amazon apps you don't use | Free the space those apps take (they live on the read-only system partition) |
-| Optionally disables Alexa, Live TV, screensaver, text-to-speech | Uninstall anything — every change is reversible |
-| Frees storage by clearing caches and leftover installers | Need root |
+| Optionally disables Alexa, Live TV, screensaver, text-to-speech | Uninstall anything: every disable can be reversed |
+| Optionally frees storage by clearing caches and leftover installers (**permanent**, see step 10) | Need root |
 
-Everything uses `pm disable-user`, which switches an app off for your user profile. One `pm enable` command switches it back on.
+The debloat steps (5–7) use `pm disable-user`, which switches an app off for your user profile. One `pm enable` command switches it back on. The optional storage cleanup (step 10) is different: it deletes files, and that can't be undone.
 
 ## The guide
 
@@ -27,12 +27,12 @@ Work through these in order. Each page ends with a ✅ check so you know it work
 | 2 | [Install Google's platform tools (ADB) on your computer](guide/02-install-platform-tools.md) | 5 min |
 | 3 | [Connect to the Fire TV](guide/03-connect.md) | 2 min |
 | 4 | [Snapshot: list what's on your stick](guide/04-snapshot.md) | 3 min |
-| 5 | [Group A — Ads, tracking & telemetry](guide/05-ads-and-telemetry.md) · *safe* | 5 min |
-| 6 | [Group B — Unused Amazon apps](guide/06-unused-apps.md) · *safe, pick what you don't use* | 10 min |
-| 7 | [Group C — Features you might want to lose](guide/07-caution-features.md) · *caution* | 5 min |
+| 5 | [Group A — Ads, tracking & telemetry](guide/05-ads-and-telemetry.md) · *no problems on the tested device* | 5 min |
+| 6 | [Group B — Unused Amazon apps](guide/06-unused-apps.md) · *skip what you use* | 10 min |
+| 7 | [Group C — Features you might want to lose](guide/07-caution-features.md) · *removes features* | 5 min |
 | 8 | [⛔ Do not touch](guide/08-do-not-touch.md) · *read this* | 2 min |
 | 9 | [Reboot and verify](guide/09-reboot-and-verify.md) | 5 min |
-| 10 | [Free up storage](guide/10-free-storage.md) · *optional* | 5 min |
+| 10 | [Free up storage](guide/10-free-storage.md) · *optional, permanent* | 5 min |
 | 11 | [Undo everything (or anything)](guide/11-undo.md) | — |
 | 12 | [Troubleshooting & lessons learned](guide/12-troubleshooting.md) | — |
 
@@ -40,9 +40,11 @@ Work through these in order. Each page ends with a ✅ check so you know it work
 
 If you'd like an AI assistant (Claude, ChatGPT, etc.) to walk you through it interactively — asking before every change, explaining each result, and saving your undo files — give it **[AGENT.md](AGENT.md)** along with this repo. It contains the rules and the exact flow the agent should follow.
 
-## Undo files
+## How undo works
 
-Before each group you save that group's undo commands to a text file on your computer (the guide shows you how). Copies of the same files are in [`undo/`](undo/) in case you lose yours.
+In step 4 you save a list of what's **already** disabled on your stick. Before each group you save a "before" list, and after it you generate that group's undo file, which contains only the packages the group actually changed. Undoing therefore puts your stick back exactly as it was, and never switches on something that was off to begin with. Even if you lose the group files, [step 11](guide/11-undo.md) can rebuild a full undo from your step 4 baseline.
+
+No ready-made undo files are included in the repo on purpose: they couldn't know what was already disabled on *your* stick.
 
 ## ⚠️ Disclaimer
 
@@ -53,4 +55,4 @@ Before each group you save that group's undo commands to a text file on your com
 - This project is **not affiliated with, endorsed by, or sponsored by Amazon.com, Inc.** or its affiliates. Amazon, Fire TV, Fire OS, Alexa and Prime Video are trademarks of Amazon.com, Inc. or its affiliates. Other names belong to their respective owners.
 - Nothing here is professional advice. If you're not comfortable running ADB commands, don't.
 
-Everything in the guide is designed to be reversible (undo commands, no uninstalling), and a factory reset (Settings → My Fire TV → Reset to Factory Defaults) restores the stick to stock. But **by using this guide, you accept full responsibility for the outcome.** See [DISCLAIMER.md](DISCLAIMER.md) for the full text.
+The debloat steps are designed to be reversible (undo files, no uninstalling). The optional storage cleanup isn't. A factory reset (Settings → My Fire TV → Reset to Factory Defaults) restores the stick to stock. But **by using this guide, you accept full responsibility for the outcome.** See [DISCLAIMER.md](DISCLAIMER.md) for the full text.

@@ -1,8 +1,10 @@
 # 7. Group C — Features you might want to lose
 
-**Risk: caution.** Each package here *works fine* — disabling it removes a feature. Decide feature by feature. Everything is still reversible.
+**Caution: each package here works. Disabling it removes a feature**, so decide feature by feature. Every change here can be undone with the undo file in 7.7.
 
-### Tested: these four features were disabled in the original session with no side effects
+### Tested features
+These four were disabled on the tested device (Fire TV Stick 4K, Fire OS 7.6.9.7). Apart from losing the feature itself, no side effects were observed. That's one device, so check your apps afterwards.
+
 | Feature | Packages | What you lose |
 |---|---|---|
 | **Alexa voice** | `com.amazon.vizzini`, `com.amazon.vizzini.ftvcds`, `com.amazon.alexamediaplayer.runtime.ftv`, `com.amazon.alexa.externalmediaplayer.fireos`, `com.amazon.tv.alexaalerts`, `com.amazon.tv.alexanotifications` | The remote's Alexa/mic button stops working; Echo devices can't control the stick |
@@ -19,41 +21,11 @@
 | System updates | `com.amazon.device.software.ota`, `com.amazon.tv.forcedotaupdater.v2` | Blocks security patches; Fire OS likely refuses anyway |
 | Metrics API | `com.amazon.client.metrics.api` | Some apps reportedly crash without it |
 
-### 7.1 Save the undo file first
-
-**Windows (PowerShell):**
-```powershell
-@'
-adb shell pm enable com.amazon.vizzini
-adb shell pm enable com.amazon.vizzini.ftvcds
-adb shell pm enable com.amazon.alexamediaplayer.runtime.ftv
-adb shell pm enable com.amazon.alexa.externalmediaplayer.fireos
-adb shell pm enable com.amazon.tv.alexaalerts
-adb shell pm enable com.amazon.tv.alexanotifications
-adb shell pm enable com.amazon.tv.livetv
-adb shell pm enable com.amazon.ftv.screensaver
-adb shell pm enable com.svox.pico
-adb shell pm enable com.ivona.tts.oem
-adb shell pm enable com.ivona.orchestrator
-'@ | Set-Content undo-C-caution.txt
-```
-
-**macOS / Linux:**
+### 7.1 Save the "before" list
 ```bash
-cat > undo-C-caution.txt <<'EOF'
-adb shell pm enable com.amazon.vizzini
-adb shell pm enable com.amazon.vizzini.ftvcds
-adb shell pm enable com.amazon.alexamediaplayer.runtime.ftv
-adb shell pm enable com.amazon.alexa.externalmediaplayer.fireos
-adb shell pm enable com.amazon.tv.alexaalerts
-adb shell pm enable com.amazon.tv.alexanotifications
-adb shell pm enable com.amazon.tv.livetv
-adb shell pm enable com.amazon.ftv.screensaver
-adb shell pm enable com.svox.pico
-adb shell pm enable com.ivona.tts.oem
-adb shell pm enable com.ivona.orchestrator
-EOF
+adb shell pm list packages -d > before-C.txt
 ```
+**Expected:** no output. A file `before-C.txt` appears in your working folder.
 
 ### 7.2 Alexa voice (6 commands — do all six or none)
 **Expected** for each: `Package <name> new state: disabled-user`
@@ -98,7 +70,7 @@ adb shell pm disable-user --user 0 com.ivona.orchestrator
 ```
 
 ### 7.6 Or: disable all four features in one go (optional)
-Use this **instead of** 7.2–7.5. Save the undo file (7.1) first.
+Use this **instead of** 7.2–7.5. Save the "before" list (7.1) first.
 
 > **Important:** This block disables **Alexa voice, Live TV, the screensaver and text-to-speech**. To keep a feature, **delete its whole set of lines** before pasting; don't keep half a feature. Paste the edited block in one go; each line runs as its own command.
 
@@ -117,13 +89,25 @@ adb shell pm disable-user --user 0 com.ivona.orchestrator                    # T
 ```
 **Expected:** one `Package <name> new state: disabled-user` line per command you kept. Scroll up and check every line.
 
+### 7.7 Create your undo file
+Writes an `adb shell pm enable` line for **each package this group actually changed**.
+
+**Windows (PowerShell):**
+```powershell
+$before = @(Get-Content before-C.txt | ForEach-Object { $_.Trim() }); $undo = @(adb shell pm list packages -d | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($before -notcontains $_) } | ForEach-Object { 'adb shell pm enable ' + ($_ -replace '^package:', '') }); Set-Content undo-C.txt -Value $undo; Get-Content undo-C.txt
+```
+
+**macOS / Linux:**
+```bash
+adb shell pm list packages -d | tr -d '\r' | grep -vxFf <(tr -d '\r' < before-C.txt) | sed 's/^package:/adb shell pm enable /' > undo-C.txt; cat undo-C.txt
+```
+
+**Expected:** one `adb shell pm enable ...` line per package you disabled in this group.
+
 ### ✅ Check
 - Press the mic button on the remote — nothing should happen (if you disabled Alexa)
 - Open YouTube or Netflix — they should launch normally
-```bash
-adb shell pm list packages -d
-```
-**Expected:** everything from A and B, plus what you disabled here. All three groups in full: **41 lines** (40 + `com.android.nfc`).
+- `undo-C.txt` lists exactly the packages you disabled in this group
 
 ---
 ⬅️ [6. Group B](06-unused-apps.md) · ➡️ Next: [8. Do not touch](08-do-not-touch.md)

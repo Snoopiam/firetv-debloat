@@ -25,8 +25,8 @@ Ask the person at the start which situation applies if it isn't obvious from you
 
 1. **Never** run `pm uninstall`, `pm uninstall -k --user 0`, `cmd package uninstall-system-updates`, `pm clear` on an Amazon app, or `pm hide`. Only `pm disable-user --user 0`, `pm enable`, and the read-only/storage commands in the guide. (Uninstall attempts on Fire OS 7.6 fail *and* re-enable disabled apps.)
 2. **Never** touch any package on [guide/08-do-not-touch.md](guide/08-do-not-touch.md), even if asked casually. If the person insists, explain the risk (unusable stick, factory reset) and require an explicit, specific confirmation for that package.
-3. **Default to one package per command**, with a result check after each. Don't chain commands with `;` or `&&`. The guide also has bulk blocks (5.3, 6.3, 7.6). Use one **only if the person explicitly asks** for bulk, only after its undo file is saved, and only with the apps or features they confirmed. Remove the lines for anything they're keeping, and show them the final block before running it. Afterwards, report the result of **every** line, not just "done".
-4. **Save the group's undo file before** running any disable command in that group. Confirm the file exists before continuing.
+3. **Default to one package per command**, with a result check after each. Don't chain commands with `;` or `&&`. The guide also has bulk blocks (5.3, 6.3, 7.6). Use one **only if the person explicitly asks** for bulk, only after that group's "before" list is saved, and only with the apps or features they confirmed. Remove the lines for anything they're keeping, and show them the final block before running it. Afterwards, report the result of **every** line, not just "done".
+4. **Undo is based on what actually changed.** Make sure `disabled-baseline.txt` exists (step 4.4) before any change. Before each group, save its "before" list. After the group, generate its undo file and **show the person its contents**: it must list exactly the packages that reported `disabled-user`. Never hand out a fixed list of `pm enable` commands for a whole group; it could switch on packages that were disabled before the session.
 5. **Ask before every group**, and inside Group B and Group C, ask **per app / per feature**. Silence or ambiguity means "skip", not "yes".
 6. Don't claim something worked until you've seen the output that proves it (`new state: disabled-user`, a `pm list packages -d` line, etc.).
 7. Don't touch anything the person didn't agree to — not even "obviously safe" extras.
@@ -43,41 +43,42 @@ Follow this order. At each ⏸ wait for the person.
 - [03](guide/03-connect.md): `adb connect`, remind them to approve the TV prompt, then `adb devices`. Don't continue until you see `device`. ⏸
 
 ### 2. Snapshot
-- [04](guide/04-snapshot.md): record the firmware, save `before-enabled.txt`, run the 4.3 check and `pm list packages -d`.
+- [04](guide/04-snapshot.md): record the firmware, save `before-enabled.txt` and **`disabled-baseline.txt`**, and run the 4.3 check.
+- If the baseline lists anything besides `com.android.nfc`, tell the person: those stay untouched, and undo will leave them disabled.
 - **Tell the person what you found:** firmware version, how many of the guide's 40 packages exist on their stick, and any that are missing (those will be skipped). ⏸
 
 ### 3. Group A — Ads & telemetry
 - Explain the group in two or three sentences and show its table. Ask: *"Disable these 8? (yes / no / let me pick)"* ⏸
 - Ask once whether they'd like **one at a time** (default) or **in one go** (bulk block) for the groups. Remember their answer, but re-confirm before each bulk run. ⏸
-- Save `undo-A-ads-telemetry.txt` (the block for their OS). Confirm it saved.
+- Save `before-A.txt` (5.1).
 - Run each disable command, one at a time. After each, report: ✅ disabled / ⛔ protected (skip) / ➖ not installed (skip).
-- Run `pm list packages -d` and give the count. Mention the 5 protected packages and that home-screen sponsored tiles will remain. ⏸
+- Generate `undo-A.txt` (5.4) and show its lines. They must match the packages that reported `disabled-user`. Mention the 5 protected packages, and that home-screen sponsored tiles will remain. Ask them to open an app they use, to check it still works. ⏸
 
 ### 4. Group B — Unused apps
 - Show the table. Go through it **app by app** (or in small themed sets: Freevee/miniTV, Shopping, Photos/Music, Games/Silk, Kids, tutorials & prompts, multi-room audio, Spotify bridge, printing), asking *"Do you use X?"* Build the list of apps to disable from their answers. ⏸
 - Read the final list back and get a yes. ⏸
-- Save `undo-B-unused-apps.txt`, then disable each chosen app one at a time with a result after each.
-- Count, and warn that this group was reset by a reboot once in testing (handled in step 9). ⏸
+- Save `before-B.txt` (6.1), then disable each chosen app one at a time with a result after each.
+- Generate `undo-B.txt` (6.4) and show it. Warn that this group was reset by a reboot once in testing (handled in step 9). ⏸
 
 ### 5. Group C — Caution features
 - Feature by feature (Alexa voice, Live TV, screensaver, text-to-speech): say **exactly what they lose**, ask yes/no. ⏸
 - Mention the "not recommended" list exists, but don't offer to disable those unless asked — and then explain why not first.
-- Save `undo-C-caution.txt`, then disable only the features they chose; all of a feature's packages, one command each.
+- Save `before-C.txt` (7.1), then disable only the features they chose; all of a feature's packages, one command each. Then generate `undo-C.txt` (7.7) and show it.
 - If they chose Alexa: ask them to press the mic button and confirm nothing happens. Ask them to open one streaming app to confirm it works. ⏸
 
 ### 6. Reboot and verify
-- [09](guide/09-reboot-and-verify.md): ask before rebooting. ⏸ After `adb reboot`, wait about 90 seconds (tell the person you're waiting), reconnect, check `uptime` to prove the reboot happened, then `pm list packages -d`.
-- Compare with the pre-reboot count. If anything came back, list exactly which and offer to re-disable those only. ⏸
+- [09](guide/09-reboot-and-verify.md): save `before-reboot.txt` (9.1), then ask before rebooting. ⏸ After `adb reboot`, wait about 90 seconds (tell the person you're waiting), reconnect, and check `uptime` to prove the reboot happened.
+- Run the name comparison (9.4). **Compare names, never just counts.** If anything was switched back on, list exactly which packages and offer to re-disable those only. If anything is *newly* disabled, don't touch it; report it. ⏸
 - Ask them to check the TV: home screen loads, apps open.
 
 ### 7. Optional — storage
-- Offer [10](guide/10-free-storage.md). If yes: show free space, clear caches, **list** leftover installer files and ask about each before deleting it, clear the package installer, show free space again. Never delete non-installer files without explicit approval. ⏸
+- Offer [10](guide/10-free-storage.md), and say clearly that **this part is permanent**: it isn't covered by undo. If yes: show free space; clear caches (explain they rebuild automatically); **list** leftover installer files and ask about each one before deleting it; show free space again. Never delete non-installer files, and **never** run `pm clear` on any package (the guide deliberately leaves out clearing the package installer). ⏸
 
 ### 8. Wrap up
 Give a short summary:
-- What's disabled now (count per group), what was protected or missing
-- Where their undo files are, and the one-line command to undo a group ([11](guide/11-undo.md))
-- To check again after reboots or updates, run `adb shell pm list packages -d`
+- What's disabled now (by name, per group), what was protected or missing
+- Where their undo files and `disabled-baseline.txt` are, the one-line command to undo a group, and the full-restore option ([11](guide/11-undo.md))
+- To check again after reboots or updates, repeat step 9's name comparison
 - They can turn ADB debugging off now if they like
 
 ## Reading results
